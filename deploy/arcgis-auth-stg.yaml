@@ -1,0 +1,128 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: arcgis-auth-stg
+  namespace: arcgis-auth  # Correct namespace
+  
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: arcgis-auth-stg  # Correct label matching
+  template:
+    metadata:
+      labels:
+        app: arcgis-auth-stg  # Match the selector label
+    spec:
+      dnsPolicy: ClusterFirst  # Add dnsPolicy here
+      containers:
+      - name: arcgis-auth-container
+        image: 422246722955.dkr.ecr.us-east-1.amazonaws.com/iipp-auth-stg:latest
+        imagePullPolicy: Always  # Ensure latest image is always pulled
+        env:
+          - name: ARCGIS_CLIENT_URL
+            valueFrom:
+              secretKeyRef:
+                name: arcgis-secrets
+                key: clientUrl
+          - name: ARCGIS_CLIENT_ID
+            valueFrom:
+              secretKeyRef:
+                name: arcgis-secrets
+                key: clientId
+          - name: ARCGIS_CLIENT_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: arcgis-secrets
+                key: clientSecret
+          - name: FLASK_SECRET_KEY
+            valueFrom:
+              secretKeyRef:
+                name: arcgis-secrets
+                key: flaskKey
+          - name: ARCGIS_WEBHOOK_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: arcgis-secrets
+                key: webhookSecret
+          - name: AWS_ACCESS_KEY_ID
+            valueFrom:
+              secretKeyRef:
+                name: arcgis-secrets
+                key: awsAccessKeyId
+          - name: AWS_SECRET_ACCESS_KEY
+            valueFrom:
+              secretKeyRef:
+                name: arcgis-secrets
+                key: awsSecretAccessKey
+          - name: AUTH_SERVICE_DOMAIN
+            valueFrom:
+              secretKeyRef:
+                name: arcgis-secrets
+                key: authServiceDomain
+          - name: REDIS_SERVER
+            valueFrom:
+              secretKeyRef:
+                name: arcgis-secrets
+                key: RedisHost
+          - name: ARCGIS_OIDC_CLIENT_ID
+            valueFrom:
+              secretKeyRef:
+                name: arcgis-secrets
+                key: arcgisOidcClientId
+          - name: ARCGIS_LOGIN_REDIRECT_URL
+            valueFrom:
+              secretKeyRef:
+                name: arcgis-secrets
+                key: arcgisLoginRedirectUrl
+          - name: AUTH_PRIVATE_KEY
+            valueFrom:
+              secretKeyRef:
+                name: arcgis-secrets
+                key: authPrivateKey
+          - name: AWS_DEFAULT_REGION
+            valueFrom:
+              secretKeyRef:
+                name: arcgis-secrets
+                key: awsDefaultRegion
+          - name: AWS_REGION
+            value: "us-east-1"  # Static value for AWS Region
+        ports:
+          - containerPort: 80
+        resources:
+          requests:
+            cpu: "500m"  # Request for 500 milliCPU
+            memory: "1Gi"  # Request for 1 GiB memory
+          limits:
+            cpu: "2000m"  # Limit to 2000 milliCPU
+            memory: "2Gi"  # Limit to 2 GiB memory
+        volumeMounts:
+          - name: config-volume
+            mountPath: /etc/config
+            readOnly: true  # Ensure the volume is mounted as read-only
+      volumes:
+        - name: config-volume
+          secret:
+            secretName: auth-secret  # Reference the secret for the volume
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: arcgis-auth-stg-hpa
+  namespace: arcgis-auth  # Same namespace as Deployment
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: arcgis-auth-stg
+  minReplicas: 1
+  maxReplicas: 5
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 50
+

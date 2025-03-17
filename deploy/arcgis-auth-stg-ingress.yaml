@@ -1,0 +1,31 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: arcgis-auth-stg-ingress
+  namespace: arcgis-auth  # Ensure it's in the correct namespace
+  annotations:
+    alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:us-east-1:422246722955:certificate/03ab63e8-0262-4fdf-bfaa-489c0ce7bbee"  # Your ACM Certificate ARN for HTTPS
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS": 443}]'  # Only listen on HTTPS (port 443)
+    alb.ingress.kubernetes.io/scheme: "internet-facing"  # Expose ALB to the internet
+    alb.ingress.kubernetes.io/ssl-redirect: "443"  
+    alb.ingress.kubernetes.io/target-type: 'ip'
+    alb.ingress.kubernetes.io/healthcheck-path: "/healthcheck"  # Set health check path to /healthcheck
+    alb.ingress.kubernetes.io/healthcheck-interval-seconds: "30"  # Health check interval (seconds)
+    alb.ingress.kubernetes.io/healthcheck-timeout-seconds: "5"  # Timeout for health check
+    alb.ingress.kubernetes.io/healthy-threshold-count: "3"  # How many successful checks are needed before marking as healthy
+    alb.ingress.kubernetes.io/unhealthy-threshold-count: "2"  # How many failed checks are needed before marking as unhealthy
+    alb.ingress.kubernetes.io/load-balancer-cookie-stickiness: "true"  # Enable sticky sessions
+    alb.ingress.kubernetes.io/load-balancer-cookie-expiration-seconds: "3600"  # Set cookie expiration time (1 hour)
+spec:
+  ingressClassName: alb
+  rules:
+    - host: iipp-arcgis-auth-stg.geoplatform.gov  # Your custom domain
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: arcgis-auth-stg-service  # Correct service name (should be in the same namespace)
+                port:
+                  number: 80  # The service should be exposed on port 80

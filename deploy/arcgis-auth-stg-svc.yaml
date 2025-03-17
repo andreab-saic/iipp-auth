@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: arcgis-auth-stg-service
+  namespace: arcgis-auth  # Ensure it's in the arcgis-auth namespace
+  labels:
+    app: arcgis-auth-stg
+spec:
+  ports:
+    - port: 80
+      targetPort: 80
+      protocol: TCP
+  selector:
+    app: arcgis-auth-stg
+  type: ClusterIP
