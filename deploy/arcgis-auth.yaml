@@ -1,23 +1,23 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: arcgis-auth-prod
+  name: arcgis-auth
   namespace: arcgis-auth  # Correct namespace
   
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: arcgis-auth-prod  # Correct label matching
+      app: arcgis-auth  # Correct label matching
   template:
     metadata:
       labels:
-        app: arcgis-auth-prod  # Match the selector label
+        app: arcgis-auth  # Match the selector label
     spec:
       dnsPolicy: ClusterFirst  # Add dnsPolicy here
       containers:
       - name: arcgis-auth-container
-        image: 422246722955.dkr.ecr.us-east-1.amazonaws.com/iipp-auth-stg:latest
+        image: 422246722955.dkr.ecr.us-east-1.amazonaws.com/iipp-auth:latest
         imagePullPolicy: Always  # Ensure latest image is always pulled
         env:
           - name: ARCGIS_CLIENT_URL
@@ -103,19 +103,19 @@ spec:
       volumes:
         - name: config-volume
           secret:
-            secretName: auth-secret  # Reference the secret for the volume
+            secretName: authLoginGov  # Reference the secret for the volume
 
 ---
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: arcgis-auth-prod-hpa
+  name: arcgis-auth-hpa
   namespace: arcgis-auth  # Same namespace as Deployment
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: arcgis-auth-prod
+    name: arcgis-auth
   minReplicas: 1
   maxReplicas: 5
   metrics:

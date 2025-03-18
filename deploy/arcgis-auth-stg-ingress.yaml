@@ -26,6 +26,6 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: arcgis-auth-stg-service  # Correct service name (should be in the same namespace)
+                name: arcgis-auth-svc # Correct service name (should be in the same namespace)
                 port:
                   number: 80  # The service should be exposed on port 80
