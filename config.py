@@ -31,7 +31,7 @@ ADD_USER_TO_GROUP_ASSIGNMENT_QUEUE_URL = f'https://{AUTH_SERVICE_DOMAIN}/add_use
 
 sys.path.insert(0, "/etc/config")
 
-from deploy.auth_config import AUTH
+from auth_config import AUTH
 
 AUTH_PRIVATE_KEY = os.environ.get('AUTH_PRIVATE_KEY')
 
