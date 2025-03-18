@@ -29,9 +29,13 @@ ADD_USER_TO_GROUP_ASSIGNMENT_QUEUE_URL = f'https://{AUTH_SERVICE_DOMAIN}/add_use
 
 # AUTH = os.environ.get('AUTH_LOGIN_GOV')
 
+# This is imported from secret auth-secret  that contains a python script with the authentication configuration to login.gov
+
 sys.path.insert(0, "/etc/config")
 
 from auth_config import AUTH
+
+# Import Private Key from secrets
 
 AUTH_PRIVATE_KEY = os.environ.get('AUTH_PRIVATE_KEY')
 

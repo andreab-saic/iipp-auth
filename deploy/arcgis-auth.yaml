@@ -103,7 +103,7 @@ spec:
       volumes:
         - name: config-volume
           secret:
-            secretName: authLoginGov  # Reference the secret for the volume
+            secretName: auth-secret  # Reference the secret for the volume
 
 ---
 apiVersion: autoscaling/v2
