@@ -16,7 +16,7 @@ from routes import routes_blueprint
 # Logging setup
 def setup_logging():
     logger = logging.getLogger(__name__)
-    logger.setLevel(logging.DEBUG)
+    logger.setLevel(logging.INFO)
     if not logger.handlers:
         file_handler = logging.FileHandler(os.path.join(os.getcwd(), 'app.log'))
         formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(filename)s-%(lineno)d - %(message)s')
@@ -53,7 +53,7 @@ def create_app():
     # Register before_request function
     @app.before_request
     def log_request():
-      app.logger.info(f"Request URL: {request.url} Method: {request.method}")
+      app.logger.debug(f"Request URL: {request.url} Method: {request.method}")
 
     # Register after_request function
     @app.after_request

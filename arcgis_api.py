@@ -173,14 +173,13 @@ def get_group_by_title(group_title):
     logger.info(f"Group {group_title} not found.")
     return None
 
-def add_user_to_groups(user, all_groups, proper_group_names):
-    if not all([user, all_groups, proper_group_names]):
+def add_user_to_groups(user, all_groups):
+    if not all([user, all_groups]):
         logger.warning("User, all_groups, or proper_group_names is None.")
         return
     token = get_token()
     for group_name in all_groups:
-        proper_group_name = proper_group_names[group_name]
-        group = get_group_by_title(proper_group_name)
+        group = get_group_by_title(group_name)
         if group:
             url = f"{ARCGIS_API_URL}sharing/rest/community/groups/{group['id']}/addUsers"
             params = {
@@ -198,10 +197,11 @@ def add_user_to_groups(user, all_groups, proper_group_names):
             except requests.exceptions.RequestException as e:
                 logger.error(f"Request failed: {e}")
 
-if __name__ == "__main__":
+    
+    # if __name__ == "__main__":
     # Example usage:
-    user = get_user_from_username('andrea_borghi')
-    if user:
-        logger.info(f"User retrieved: {user.get('email')}")
-    else:
-        logger.warning("No user found.")
+    # user = get_user_from_username('andrea_borghi')
+    # if user:
+    #     logger.info(f"User retrieved: {user.get('email')}")
+    # else:
+    #     logger.warning("No user found.")

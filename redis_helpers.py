@@ -12,15 +12,15 @@ formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 file_handler.setFormatter(formatter)
 logger.addHandler(file_handler)
 
-# Define Redis Keys (These will replace DynamoDB table names)
-AUTH_CODE_TO_ACCESS_TOKEN_KEY = 'arcgis-auth-group-mgmt-auth-code-to-access-token'
-ACCESS_TOKEN_TO_USERINFO_KEY = 'arcgis-auth-group-mgmt-access-token-to-userinfo'
-USERNAME_TO_EMAIL_KEY = 'arcgis-auth-group-mgmt-username-to-email'
-USER_AUTH_ACCESS_KEY = 'arcgis-auth-group-mgmt-user-auth-access'
-USER_EMAIL_TO_USER_GROUPS_KEY = 'arcgis-auth-group-mgmt-user-email-to-user-groups'
+# Define Redis Keys 
+AUTH_CODE_TO_ACCESS_TOKEN_KEY = 'auth-code-to-access-token'
+ACCESS_TOKEN_TO_USERINFO_KEY = 'access-token-to-userinfo'
+USERNAME_TO_EMAIL_KEY = 'username-to-email'
+USER_AUTH_ACCESS_KEY = 'user-auth-access'
+USER_EMAIL_TO_USER_GROUPS_KEY = 'user-email-to-user-groups'
 ARCGIS_USER_GROUPS = 'arcgis_groups'
 
-# Helper function to set data in Redis (replaces dbput)
+# Helper function to set data in Redis 
 def redis_set(key, item):
     try:
         redis_client.hmset(key, item)  # Use hash mapping for structured data
@@ -28,7 +28,7 @@ def redis_set(key, item):
     except Exception as e:
         logger.error(f"Error writing to Redis: {e}")
 
-# Helper function to get data from Redis (replaces dbget)
+# Helper function to get data from Redis
 def redis_get(key):
     try:
         item = redis_client.hgetall(key)
@@ -42,7 +42,7 @@ def redis_get(key):
         logger.error(f"Error reading from Redis: {e}")
         return None
 
-# Helper function to delete data from Redis (replaces dbdelete)
+# Helper function to delete data from Redis
 def redis_delete(key):
     try:
         redis_client.delete(key)
@@ -50,7 +50,7 @@ def redis_delete(key):
     except Exception as e:
         logger.error(f"Error deleting from Redis: {e}")
 
-# Functions adapted to Redis
+# Functions
 
 def put_auth_code_to_access_token(auth_code, access_token):
     item = {
@@ -145,6 +145,8 @@ def delete_user_auth_access(email):
 def delete_email_to_user_groups(email):
     redis_delete(f"{USER_EMAIL_TO_USER_GROUPS_KEY}:{email}")
     logger.info(f"delete_email_to_user_groups - Email: {email}")
+
+# Functions to check things
 
 def does_user_exist(email):
     return get_user_auth_access(email) is not None

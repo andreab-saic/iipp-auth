@@ -27,15 +27,11 @@ ARCGIS_LOGIN_CALLBACK_URL = f'https://{AUTH_SERVICE_DOMAIN}/arcgis_callback'
 ARCGIS_LOGIN_REDIRECT_URL = os.environ.get('ARCGIS_LOGIN_REDIRECT_URL')
 ADD_USER_TO_GROUP_ASSIGNMENT_QUEUE_URL = f'https://{AUTH_SERVICE_DOMAIN}/add_user_to_group_assignment_queue'
 
-# AUTH = os.environ.get('AUTH_LOGIN_GOV')
-
-# This is imported from secret auth-secret  that contains a python script with the authentication configuration to login.gov
+AUTH = os.environ.get('AUTH_LOGIN_GOV')
 
 sys.path.insert(0, "/etc/config")
 
 from auth_config import AUTH
-
-# Import Private Key from secrets
 
 AUTH_PRIVATE_KEY = os.environ.get('AUTH_PRIVATE_KEY')
 

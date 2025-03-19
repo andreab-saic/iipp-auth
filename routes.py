@@ -26,8 +26,8 @@ from token_generation import (
 from manage_arcgis_user_groups_helper_functions import (
     get_arcgis_group_titles,
     is_user_group_in_arcgis,
-    assign_user_to_groups,
-    is_user_org_in_allowed_orgs, is_user_selected_group_in_arcgis_groups, parent_groups
+    get_user_groups,
+    is_user_org_in_allowed_orgs, parent_groups, get_user_group
 )
 from redis_helpers import (
     get_username_to_email,
@@ -38,10 +38,10 @@ from redis_helpers import (
     delete_email_to_user_groups,
     get_access_token_to_userinfo,
     get_auth_code_to_access_token, get_user_auth_access, put_user_auth_access, create_user,
-    put_auth_code_to_access_token, put_access_token_to_userinfo
+    put_auth_code_to_access_token, put_access_token_to_userinfo, put_email_to_user_groups
 )
 from arcgis_api import (
-    get_user_from_username
+    get_user_from_username, add_user_to_groups
 )
 
 # Initialize logger
@@ -261,7 +261,7 @@ def select_user_groups():
         if not selected_group or not user_email:
             return "Invalid submission", 400
 
-        redis_client.setex(f"user:{user_email}:selected_group", 3600, selected_group)
+        put_email_to_user_groups(user_email, selected_group)
         return redirect(ARCGIS_LOGIN_CALLBACK_URL)
 
 # -------------------------
@@ -293,13 +293,17 @@ def add_user_to_groups_route():
     operation = event['operation']
     source = event['source']
 
+    logger.info(f"Received webhook event: {event}")
+
     user_was_created = operation == 'add' and source == 'users'
     user_was_updated = operation == 'update' and source == 'users'
     user_was_deleted = operation == 'delete' and source == 'user'
 
+
+
     # Handle user creation or update
     if user_was_created or user_was_updated:
-        username = event['username']
+        username = event.get('username')
         user = get_user_from_username(username)
         user_email = user.get('email')
 
@@ -308,29 +312,20 @@ def add_user_to_groups_route():
 
         # Handle group assignment for created user
         if user_was_created:
-            user_groups = get_email_to_user_groups(user_email)
-            if user_groups:
-                # Assign user to their self-selected groups from Redis
-                selected_groups = json.loads(user_groups['user_groups'])
-                for group_title in selected_groups:
-                    # Check if the group exists in Redis
-                    if is_user_group_in_arcgis(group_title):
-                        # Group exists, assign the user to the group
-                        assign_user_to_groups(username, group_title)
-                    else:
-                        logger.info(f"Group '{group_title}' not found in ArcGIS groups.")
-            else:
-                # If no groups selected, assign user to default groups from Redis
-                default_groups = get_arcgis_group_titles()
-                for group_title in default_groups:
-                    # Assign the user to each default group
-                    assign_user_to_groups(username, group_title)
+            selected_group = get_email_to_user_groups(user_email)
+            user_group = json.loads(selected_group['user_groups']) if selected_group else get_user_group(user_email)
+            logger.info(f'Attempting to assign user group: {user_group}')
+            group_titles = get_user_groups(user_group)
+            add_user_to_groups(user, group_titles)
+
 
     # Handle user deletion
     elif user_was_deleted:
-        username = event['id']
-        user_email_dict = get_username_to_email(username)
-        user_email = user_email_dict['user_email']
+        username = event.get('id')
+        user = get_username_to_email(username)
+        user_email = user.get('user_email')
+
+        logger.info(f'Deleting user-related data for {user_email}')
 
         # Delete user-related data from Redis and other systems
         delete_username_to_email(username)
@@ -392,7 +387,8 @@ SPECIAL_USDA_USERS = {
 SPECIAL_USDA_DOMAINS = {
     # "specialagency.gov",
     # "examplemilitary.mil",
-    "@usda.gov"
+    "contractor.usgs.gov",
+    "usda.gov"
 }
 
 def is_usda_user(user_email):
@@ -469,25 +465,22 @@ def callback():
         logger.info(f"Bypass activated for {user_email} - forcing USDA access.")
         user_is_usda = True
         user_is_in_allowed_orgs = True
+        user_has_selected_group = True if get_email_to_user_groups(user_email) is not None else False
     else:
         user_is_usda = False
         user_is_in_allowed_orgs = is_user_org_in_allowed_orgs(user_email)
-
-    user_has_selected_group = False
+        user_has_selected_group = False
 
     # this is if users have logged in before and have data in redis
     if user_permission_data is not None:
         (user_is_disallowed,
-         user_has_selected_group,
          user_previous_selected_group) = parse_auth_access(user_permission_data.get('auth_access'))
 
         if user_is_disallowed is True:
 
             logger.warning(f'User {user_email} is disallowed. Checking for USDA and selected group.')
             if user_is_usda is True and user_previous_selected_group is not None:
-                is_previous_selected_group_in_arcgis_groups = is_user_selected_group_in_arcgis_groups(
-                    user_previous_selected_group)
-
+                is_previous_selected_group_in_arcgis_groups = True if get_email_to_user_groups(user_email) else False
                 if is_previous_selected_group_in_arcgis_groups:
                     logger.info(f'User {user_email} is allowed to re-select group {user_previous_selected_group}')
                     user_is_disallowed = False

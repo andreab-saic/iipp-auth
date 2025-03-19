@@ -4,6 +4,7 @@ import logging
 import redis
 import json
 import arcgis_api
+import re
 from config import redis_client, ARCGIS_GROUPS_KEY
 from redis_helpers import get_email_to_user_groups, get_username_to_email, delete_username_to_email, \
     delete_user_auth_access, delete_email_to_user_groups, get_arcgis_groups
@@ -41,6 +42,7 @@ parent_groups = {
     'doc': ['census']
 }
 
+
 def get_user_group(user_email):
     """Determine user's group based on email domain."""
     for domain in allowed_domains:
@@ -48,41 +50,29 @@ def get_user_group(user_email):
             return domain.replace(".gov", "")
     return None
 
+def get_parent_group(child_group):
+  for parent, children in parent_groups.items():
+    if child_group in children:
+      return parent
+  return False
+
 def get_parent_groups(user_group):
-    """Get all parent groups for a user group."""
-    return parent_groups.get(user_group, [])
+  matched_parent_groups = []
+  for search_attempt in range(len(parent_groups)):
+    match_group = get_parent_group(user_group)
+    if match_group in group_names:
+      matched_parent_groups.append(match_group)
+      user_group = match_group
+    else:
+      break
+  return matched_parent_groups
 
 # -------------------------
 # ✅ Authorization & Group Validation (Fully Integrated)
 # -------------------------
 def is_user_org_in_allowed_orgs(user_email):
     """Check if user belongs to an allowed organization."""
-    session_key = f"user:{user_email}"
-
-    user_orgs = redis_client.get(f"{session_key}:organizations")
-
-    if user_orgs:
-        user_orgs = json.loads(user_orgs)
-    else:
-        user_group = get_user_group(user_email)
-        if user_group is None:
-            return False
-        proper_group_name = proper_group_names.get(user_group)
-        groups_in_arcgis = json.loads(get_arcgis_groups())
-        return proper_group_name in groups_in_arcgis
-
-    return any(org in ["USDA", "DOI"] for org in user_orgs)
-
-def is_user_selected_group_in_arcgis_groups(user_selected_group):
-    """Check if a user-selected group exists in ArcGIS."""
-    proper_group_name = proper_group_names.get(user_selected_group)
-
-    cache_key = f"group_exists:{proper_group_name}"
-    cached_group_exists = redis_client.get(cache_key)
-    if cached_group_exists is not None:
-        return cached_group_exists == 'True'
-
-    return False  # Assume group doesn't exist if not in cache
+    return True if get_user_group(user_email) is not None else False
 
 # Helper Functions
 
@@ -93,9 +83,10 @@ def get_arcgis_group_titles():
     """
     try:
         groups_data = redis_client.get(ARCGIS_GROUPS_KEY)
+        logger.info(f"Fetched group titles from Redis: {groups_data}")
         if groups_data:
-            titles = json.loads(groups_data).get("Titles", [])
-            logger.info(f"Fetched group titles from Redis: {titles}")
+            titles = re.findall(r"'([^']+)'", groups_data)
+            logger.info(f"Converted group titles to list: {titles}")
             return titles
         else:
             logger.info("No ArcGIS group titles found in Redis.")
@@ -158,8 +149,8 @@ def arcgis_webhook_assign_user_to_groups(username):
     parent_groups = get_parent_groups(user_group)
     all_groups = parent_groups[:]
     all_groups.append(user_group)
-    # proper_group_names = proper_group_names
-    arcgis_api.add_user_to_groups(user, all_groups, proper_group_names)
+    new_groups = [proper_group_names.get(g) for g in all_groups]
+    arcgis_api.add_user_to_groups(user, new_groups)
     logger.info(f"Added user {user_email} to groups {all_groups}")
 
 def arcgis_webhook_assign_user_to_self_selected_group(username, user_groups_list):
@@ -170,21 +161,16 @@ def arcgis_webhook_assign_user_to_self_selected_group(username, user_groups_list
     parent_groups = get_parent_groups(user_group)
     all_groups = parent_groups[:]
     all_groups.append(user_group)
-    # proper_group_names = get_user_group.proper_group_names
     arcgis_api.add_user_to_groups(user, all_groups, proper_group_names)
     logger.info(f"Added user {user_email} to groups {all_groups}")
 
-def assign_user_to_groups(user_email, user=None, user_self_selected_group=None):
-    logger.info(f"Assigning user '{user_email}' to groups.")
-    if user is None:
-        user = arcgis_api.get_user_by_email(user_email)
-    user_group = user_self_selected_group or get_user_group(user_email)
-    parent_groups = get_parent_groups(user_group)
+def get_user_groups(base_user_group):
+    parent_groups = get_parent_groups(base_user_group)
     all_groups = parent_groups[:]
-    all_groups.append(user_group)
-    # proper_group_names = proper_group_names
-    arcgis_api.add_user_to_groups(user, all_groups, proper_group_names)
-    logger.info(f"Assigned user {user_email} to groups {all_groups}")
+    all_groups.append(base_user_group)
+    new_groups = [proper_group_names.get(g) for g in all_groups]
+    logger.info(f"Found groups {all_groups} for user group {base_user_group}")
+    return new_groups
 
 def add_user_to_groups(data):
     """
@@ -216,8 +202,7 @@ def add_user_to_groups(data):
     user_was_deleted = operation == 'delete' and source == 'user'
     if user_was_deleted:
         username = data['events'][0]['id']
-        user_email_dict = get_username_to_email(username)
-        user_email = user_email_dict['user_email']
+        user_email = get_username_to_email(username)
         # Remove user mappings and access
         delete_username_to_email(username)
         delete_user_auth_access(user_email)

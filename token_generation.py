@@ -231,7 +231,6 @@ def parse_x509_subject(x509_subject):
 def parse_auth_access(user_auth_access):
     user_auth_access_dict = json.loads(user_auth_access)
     user_is_disallowed = user_auth_access_dict.get('is_disallowed')
-    user_has_selected_group = user_auth_access_dict.get('has_selected_group')
     user_previous_selected_group = user_auth_access_dict.get('disallowed_selected_group')
     logger.info(f'User permissions loaded: {user_auth_access_dict}')
-    return user_is_disallowed, user_has_selected_group, user_previous_selected_group
+    return user_is_disallowed, user_previous_selected_group
