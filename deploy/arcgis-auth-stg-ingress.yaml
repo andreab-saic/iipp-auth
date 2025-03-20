@@ -4,7 +4,7 @@ metadata:
   name: arcgis-auth-stg-ingress
   namespace: arcgis-auth  # Ensure it's in the correct namespace
   annotations:
-    alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:us-east-1:422246722955:certificate/03ab63e8-0262-4fdf-bfaa-489c0ce7bbee"  # Your ACM Certificate ARN for HTTPS
+    alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:us-east-1:422246722955:certificate/989f2ca1-ea80-4304-94e5-49f5186e2679"  # Your ACM Certificate ARN for HTTPS
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS": 443}]'  # Only listen on HTTPS (port 443)
     alb.ingress.kubernetes.io/scheme: "internet-facing"  # Expose ALB to the internet
     alb.ingress.kubernetes.io/ssl-redirect: "443"  
